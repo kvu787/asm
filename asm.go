@@ -3,28 +3,38 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"strconv"
 	"os"
+	"strconv"
 	"strings"
 )
 
 func main() {
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		exec(scanner.Text())
+	// load instructions
+	for s := bufio.NewScanner(os.Stdin); s.Scan(); {
+		instructions = append(instructions, s.Text())
 	}
+
+	// execute
+	for ip < len(instructions) {
+		instruction := instructions[ip]
+		ip++
+		exec(instruction)
+	}
+	os.Exit(0)
 }
 
-var registers [4]int
-var memory [1000]int
+var ip int = 0
+var instructions []string = []string{}
+var regs [4]int
+var mem [1000]int
 
 func exec(s string) {
 	if s == "p" {
-		fmt.Println(registers)
+		fmt.Println(regs)
 	} else {
 		operands := strings.Split(s, " ")
-		src, _ := strconv.Atoi(operands[1])
-		pDst := nameToRegister(operands[2])
+		src := getSrc(operands[1])
+		pDst := getDst(operands[2])
 		switch operands[0] {
 		case "add":
 			*pDst = *pDst + src
@@ -36,18 +46,34 @@ func exec(s string) {
 	}
 }
 
-func nameToRegister(name string) *int {
-	switch name {
-	case "a":
-		return &registers[0]
-	case "b":
-		return &registers[1]
-	case "c":
-		return &registers[2]
-	case "d":
-		return &registers[3]
-	default:
-		panic("invalid register name")
+func getSrc(name string) int {
+	if name[0] == '%' {
+		return *getDst(name)
+	} else if name[0] == '$' {
+		i, _ := strconv.Atoi(name[1:])
+		return i
+	} else {
+		i, _ := strconv.Atoi(name)
+		return mem[i]
 	}
 }
 
+func getDst(name string) *int {
+	if name[0] == '%' {
+		switch name[1:] {
+		case "a":
+			return &regs[0]
+		case "b":
+			return &regs[1]
+		case "c":
+			return &regs[2]
+		case "d":
+			return &regs[3]
+		default:
+			panic("invalid register name")
+		}
+	} else {
+		i, _ := strconv.Atoi(name)
+		return &mem[i]
+	}
+}
