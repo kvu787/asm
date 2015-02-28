@@ -8,6 +8,13 @@ import (
 	"strings"
 )
 
+var ip int = 0
+var instructions []string = []string{}
+var regs [4]int
+var mem [1000]int
+var zf bool
+var sf bool
+
 func main() {
 	// load instructions
 	for s := bufio.NewScanner(os.Stdin); s.Scan(); {
@@ -23,16 +30,62 @@ func main() {
 	os.Exit(0)
 }
 
-var ip int = 0
-var instructions []string = []string{}
-var regs [4]int
-var mem [1000]int
-
 func exec(s string) {
-	if s == "p" {
-		fmt.Println(regs)
-	} else {
-		operands := strings.Split(s, " ")
+	operands := strings.Split(s, " ")
+	switch operands[0] {
+	case "p":
+		var nextInstruction string
+		if ip >= len(instructions) {
+			nextInstruction = "no more instructions"
+		} else {
+			nextInstruction = instructions[ip]
+		}
+		fmt.Printf("a: %d\n"+
+			"b: %d\n"+
+			"c: %d\n"+
+			"d: %d\n"+
+			"ip: %d\n"+
+			"next instruction: %v\n",
+			regs[0], regs[1], regs[2], regs[3], ip, nextInstruction)
+	case "cmp":
+		m := getSrc(operands[1])
+		n := getSrc(operands[2])
+		result := m - n
+		zf = result == 0
+		sf = result < 0
+	case "jmp",
+		"je", "jne", "jz", "jnz",
+		"jg", "jge", "jl", "jle":
+		addr := getSrc(operands[1])
+		switch operands[0] {
+		case "jmp":
+			ip = addr
+		case "je", "jz":
+			if zf {
+				ip = addr
+			}
+		case "jne", "jnz":
+			if !zf {
+				ip = addr
+			}
+		case "jg":
+			if !zf && !sf {
+				ip = addr
+			}
+		case "jge":
+			if zf || !sf {
+				ip = addr
+			}
+		case "jl":
+			if !zf && sf {
+				ip = addr
+			}
+		case "jle":
+			if zf || sf {
+				ip = addr
+			}
+		}
+	default:
 		src := getSrc(operands[1])
 		pDst := getDst(operands[2])
 		switch operands[0] {
@@ -40,6 +93,8 @@ func exec(s string) {
 			*pDst = *pDst + src
 		case "sub":
 			*pDst = *pDst - src
+		case "mul":
+			*pDst = *pDst * src
 		case "mov":
 			*pDst = src
 		}
