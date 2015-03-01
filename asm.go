@@ -8,17 +8,40 @@ import (
 	"strings"
 )
 
+/*
+	What is an ISA
+	- instructions
+		- arithmetic
+		- bitwise
+		- comparison
+		- jump (control flow)
+		- stack
+	- registers
+	- flags
+
+	todo
+	- jump labels
+	- stack operations
+*/
+
 var ip int = 0
 var instructions []string = []string{}
 var regs [4]int
 var mem [1000]int
 var zf bool
 var sf bool
+var labels map[string]int = make(map[string]int)
 
 func main() {
 	// load instructions
+	i := 0
 	for s := bufio.NewScanner(os.Stdin); s.Scan(); {
+		text := s.Text()
+		if text[0] == '.' {
+			labels[text] = i + 1
+		}
 		instructions = append(instructions, s.Text())
+		i++
 	}
 
 	// execute
@@ -31,6 +54,9 @@ func main() {
 }
 
 func exec(s string) {
+	if s[0] == '.' {
+		return
+	}
 	operands := strings.Split(s, " ")
 	switch operands[0] {
 	case "p":
@@ -50,13 +76,14 @@ func exec(s string) {
 	case "cmp":
 		m := getSrc(operands[1])
 		n := getSrc(operands[2])
-		result := m - n
+		result := n - m
 		zf = result == 0
 		sf = result < 0
 	case "jmp",
 		"je", "jne", "jz", "jnz",
 		"jg", "jge", "jl", "jle":
-		addr := getSrc(operands[1])
+		label := operands[1]
+		addr := labels[label]
 		switch operands[0] {
 		case "jmp":
 			ip = addr

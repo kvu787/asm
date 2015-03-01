@@ -1,7 +1,8 @@
 mov $1 %a
 mov $1 %b
+.loop
 mul %b %a
 add $1 %b
-cmp %b $20
-jne $2
+cmp $10 %b
+jne .loop
 p
