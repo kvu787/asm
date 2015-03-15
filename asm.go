@@ -9,30 +9,66 @@ import (
 	"strings"
 )
 
-/*
-	What is an ISA
-	- instructions
-		- arithmetic
-		- bitwise
-		- comparison
-		- jump (control flow)
-		- stack
-	- registers
-	- flags
+var help string = `usage: asm [-h]
 
-	todo
-	- stack operations
-*/
+Asm implements a simple x86-like processor.
 
-var ip int64
-var instructions []string = make([]string, 0)
-var regs [8]int64
-var mem [1000]int64
-var zf bool
-var sf bool
-var labels map[string]int64 = make(map[string]int64)
+Instructions are read from standard input.
+
+The instructions behave similarly to their x86 counterparts.
+The following instructions are supported:
+
+	mov
+	push
+	pop
+
+	add
+	sub
+	mul
+
+	cmp
+	jmp
+	je, jz
+	jne, jnz
+	jg
+	jge
+	jl
+	jle
+
+	call
+	leave
+	ret`
+
+// global vars
+var (
+	ip           int64
+	instructions []string
+	regs         [8]int64
+	mem          [1000]int64
+	zf           bool
+	sf           bool
+	labels       map[string]int64
+)
+
+// operand formats
+var (
+	immre  = regexp.MustCompile(`^[$]\d+$`)
+	regre  = regexp.MustCompile(`^%\w+$`)
+	mem1re = regexp.MustCompile(`^\d+$`)
+	mem2re = regexp.MustCompile(`^[(]%\w+[)]$`)
+	mem3re = regexp.MustCompile(`^([-]?\d+)[(](%\w+)[)]$`)
+)
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "-h" {
+		fmt.Println(help)
+		os.Exit(0)
+	}
+
+	// init global vars
+	instructions = make([]string, 0)
+	labels = make(map[string]int64)
+
 	// init stack and frame pointers
 	*getPtr("%sp") = int64(len(mem) - 1)
 	*getPtr("%fp") = int64(len(mem) - 1)
@@ -145,24 +181,18 @@ func Exec(s string) {
 		Exec("push %ip")
 		label := operands[1]
 		Exec(fmt.Sprintf("jmp %s", label))
-	case "ret":
-		Exec("pop %ip")
 	case "leave":
 		Exec("mov %fp %sp")
 		Exec("pop %fp")
+	case "ret":
+		Exec("pop %ip")
+	default:
+		panic("Exec: unrecognized instruction")
 	}
 }
 
-// operand formats
-var (
-	immre  = regexp.MustCompile(`^[$]\d+$`)
-	regre  = regexp.MustCompile(`^%\w+$`)
-	mem1re = regexp.MustCompile(`^\d+$`)
-	mem2re = regexp.MustCompile(`^[(]%\w+[)]$`)
-	mem3re = regexp.MustCompile(`^([-]?\d+)[(](%\w+)[)]$`)
-)
-
-// operand is immediate, mem, or reg
+// getVal returns the value of the operand.
+// Operand is an immediate, memory, or register name.
 func getVal(operand string) int64 {
 	if operand[0] == '$' {
 		i, _ := strconv.ParseInt(operand[1:], 10, 64)
@@ -172,7 +202,8 @@ func getVal(operand string) int64 {
 	}
 }
 
-// operand is mem or reg
+// getPtr returns a pointer to the memory location of the operand
+// Operand is a memory or register name.
 func getPtr(operand string) *int64 {
 	switch true {
 	case regre.MatchString(operand):
