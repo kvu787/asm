@@ -2,7 +2,7 @@ jmp .main
 .inc
 push %fp
 mov %sp %fp
-mov 2(%sp) %a
+mov 2(%fp) %a
 add $1 %a
 leave
 ret
