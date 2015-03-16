@@ -70,8 +70,10 @@ func main() {
 	labels = make(map[string]int64)
 
 	// init stack and frame pointers
-	*getPtr("%sp") = int64(len(mem) - 1)
-	*getPtr("%fp") = int64(len(mem) - 1)
+	spPtr, _ := getPtr("%sp")
+	*spPtr = int64(len(mem) - 1)
+	fpPtr, _ := getPtr("%fp")
+	*fpPtr = int64(len(mem) - 1)
 
 	// load instructions from standard input
 	i := int64(0)
@@ -89,7 +91,11 @@ func main() {
 	for ip < int64(len(instructions)) {
 		instruction := instructions[ip]
 		ip++
-		Exec(instruction)
+		err := Exec(instruction)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+			os.Exit(1)
+		}
 	}
 
 	os.Exit(0)
@@ -97,7 +103,7 @@ func main() {
 
 // Exec runs an assembly instruction. It may change registers, change memory,
 // and/or set flags.
-func Exec(s string) {
+func Exec(s string) error {
 	operands := strings.Split(s, " ")
 	switch operands[0] {
 	case "p":
@@ -119,15 +125,26 @@ func Exec(s string) {
 				"ip: %d\n"+
 				"next instruction: %v\n",
 			regs[0], regs[1], regs[2], regs[3], regs[4], regs[5], regs[6], regs[7], ip, nextInstruction)
+		return nil
 	case "cmp":
-		n := getVal(operands[1])
-		m := getVal(operands[2])
+		n, err := getVal(operands[1])
+		if err != nil {
+			return err
+		}
+		m, err := getVal(operands[2])
+		if err != nil {
+			return err
+		}
 		result := m - n
 		zf = result == 0
 		sf = result < 0
+		return nil
 	case "jmp", "je", "jne", "jz", "jnz", "jg", "jge", "jl", "jle":
 		label := operands[1]
-		addr := labels[label]
+		addr, valid := labels[label]
+		if !valid {
+			return fmt.Errorf("invalid label: %s", label)
+		}
 		switch operands[0] {
 		case "jmp":
 			ip = addr
@@ -156,9 +173,16 @@ func Exec(s string) {
 				ip = addr
 			}
 		}
+		return nil
 	case "add", "sub", "mul", "mov":
-		src := getVal(operands[1])
-		pDst := getPtr(operands[2])
+		src, err := getVal(operands[1])
+		if err != nil {
+			return err
+		}
+		pDst, err := getPtr(operands[2])
+		if err != nil {
+			return err
+		}
 		switch operands[0] {
 		case "add":
 			*pDst = *pDst + src
@@ -169,80 +193,119 @@ func Exec(s string) {
 		case "mov":
 			*pDst = src
 		}
+		return nil
 	case "pop":
-		pDst := getPtr(operands[1])
-		*pDst = mem[getVal("%sp")]
-		*getPtr("%sp") = getVal("%sp") + 1
+		pDst, err := getPtr(operands[1])
+		if err != nil {
+			return err
+		}
+		sp, _ := getVal("%sp")
+		*pDst = mem[sp]
+		spPtr, _ := getPtr("%sp")
+		*spPtr = sp + 1
+		return nil
 	case "push":
-		*getPtr("%sp") = getVal("%sp") - 1
-		src := getVal(operands[1])
-		mem[getVal("%sp")] = src
+		spPtr, _ := getPtr("%sp")
+		sp, _ := getVal("%sp")
+		*spPtr = sp - 1
+		src, err := getVal(operands[1])
+		if err != nil {
+			return err
+		}
+		mem[*spPtr] = src
+		return nil
 	case "call":
 		Exec("push %ip")
 		label := operands[1]
-		Exec(fmt.Sprintf("jmp %s", label))
+		err := Exec(fmt.Sprintf("jmp %s", label))
+		if err != nil {
+			return err
+		}
+		return nil
 	case "leave":
 		Exec("mov %fp %sp")
 		Exec("pop %fp")
+		return nil
 	case "ret":
 		Exec("pop %ip")
+		return nil
 	default:
-		panic("Exec: unrecognized instruction")
+		return fmt.Errorf("invalid instruction: %s", operands[0])
 	}
 }
 
 // getVal returns the value of the operand.
 // Operand is an immediate, memory, or register name.
-func getVal(operand string) int64 {
+func getVal(operand string) (int64, error) {
 	if operand[0] == '$' {
-		i, _ := strconv.ParseInt(operand[1:], 10, 64)
-		return i
+		i, err := strconv.ParseInt(operand[1:], 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return i, nil
 	} else {
-		return *getPtr(operand)
+		ptr, err := getPtr(operand)
+		if err != nil {
+			return 0, err
+		}
+		return *ptr, nil
 	}
 }
 
 // getPtr returns a pointer to the memory location of the operand
 // Operand is a memory or register name.
-func getPtr(operand string) *int64 {
+func getPtr(operand string) (*int64, error) {
+	err := fmt.Errorf("invalid operand: %s", operand)
 	switch true {
 	case regre.MatchString(operand):
 		switch operand[1:] {
 		case "a":
-			return &regs[0]
+			return &regs[0], nil
 		case "b":
-			return &regs[1]
+			return &regs[1], nil
 		case "c":
-			return &regs[2]
+			return &regs[2], nil
 		case "d":
-			return &regs[3]
+			return &regs[3], nil
 		case "e":
-			return &regs[4]
+			return &regs[4], nil
 		case "f":
-			return &regs[5]
+			return &regs[5], nil
 		case "sp":
-			return &regs[6]
+			return &regs[6], nil
 		case "fp":
-			return &regs[7]
+			return &regs[7], nil
 		case "ip":
-			return &ip
+			return &ip, nil
 		default:
-			panic("getPtr: invalid register name: " + operand[1:])
+			return nil, err
 		}
 	case mem1re.MatchString(operand):
-		i, _ := strconv.ParseInt(operand, 10, 64)
-		return &mem[i]
+		i, err := strconv.ParseInt(operand, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return &mem[i], nil
 	case mem2re.MatchString(operand):
 		reg := operand[1 : len(operand)-1]
-		regval := *getPtr(reg)
-		return &mem[regval]
+		regPtr, err := getPtr(reg)
+		if err != nil {
+			return nil, err
+		}
+		return &mem[*regPtr], nil
 	case mem3re.MatchString(operand):
 		matches := mem3re.FindStringSubmatch(operand)
 		reg := matches[2]
-		regval := *getPtr(reg)
-		intval, _ := strconv.ParseInt(matches[1], 10, 64)
-		return &mem[regval+intval]
+		retPtr, err := getPtr(reg)
+		if err != nil {
+			return nil, err
+		}
+		intval, err := strconv.ParseInt(matches[1], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return &mem[*retPtr+intval], nil
 	default:
-		panic("getPtr: unrecognized operand")
+		return nil, err
 	}
 }
