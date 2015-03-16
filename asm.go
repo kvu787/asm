@@ -22,6 +22,8 @@ The following instructions are supported:
 	push
 	pop
 
+	inc
+	dec
 	add
 	sub
 	mul
@@ -70,10 +72,8 @@ func main() {
 	labels = make(map[string]int64)
 
 	// init stack and frame pointers
-	spPtr, _ := getPtr("%sp")
-	*spPtr = int64(len(mem) - 1)
-	fpPtr, _ := getPtr("%fp")
-	*fpPtr = int64(len(mem) - 1)
+	setVal("%sp", int64(len(mem)-1))
+	setVal("%fp", int64(len(mem)-1))
 
 	// load instructions from standard input
 	i := int64(0)
@@ -87,7 +87,7 @@ func main() {
 		}
 	}
 
-	// execute
+	// execute instructions
 	for ip < int64(len(instructions)) {
 		instruction := instructions[ip]
 		ip++
@@ -194,30 +194,26 @@ func Exec(s string) error {
 			*pDst = src
 		}
 		return nil
+	case "inc":
+		err := Exec("add $1 " + operands[1])
+		return err
+	case "dec":
+		err := Exec("sub $1 " + operands[1])
+		return err
 	case "pop":
-		pDst, err := getPtr(operands[1])
+		err := Exec("mov (%sp) " + operands[1])
 		if err != nil {
 			return err
 		}
-		sp, _ := getVal("%sp")
-		*pDst = mem[sp]
-		spPtr, _ := getPtr("%sp")
-		*spPtr = sp + 1
+		Exec("inc %sp")
 		return nil
 	case "push":
-		spPtr, _ := getPtr("%sp")
-		sp, _ := getVal("%sp")
-		*spPtr = sp - 1
-		src, err := getVal(operands[1])
-		if err != nil {
-			return err
-		}
-		mem[*spPtr] = src
-		return nil
+		Exec("dec %sp")
+		err := Exec(fmt.Sprintf("mov %s (%%sp)", operands[1]))
+		return err
 	case "call":
 		Exec("push %ip")
-		label := operands[1]
-		err := Exec(fmt.Sprintf("jmp %s", label))
+		err := Exec(fmt.Sprintf("jmp %s", operands[1]))
 		if err != nil {
 			return err
 		}
@@ -252,7 +248,18 @@ func getVal(operand string) (int64, error) {
 	}
 }
 
-// getPtr returns a pointer to the memory location of the operand
+// setVal sets the value of a storage location of the operand.
+// Operand is a memory or register name.
+func setVal(operand string, val int64) error {
+	ptr, err := getPtr(operand)
+	if err != nil {
+		return err
+	}
+	*ptr = val
+	return nil
+}
+
+// getPtr returns a pointer to the storage location of the operand.
 // Operand is a memory or register name.
 func getPtr(operand string) (*int64, error) {
 	err := fmt.Errorf("invalid operand: %s", operand)
