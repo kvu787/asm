@@ -81,7 +81,9 @@ func main() {
 	i := int64(0)
 	for s := bufio.NewScanner(os.Stdin); s.Scan(); {
 		text := s.Text()
-		if text[0] == '.' {
+		if len(text) == 0 {
+			continue
+		} else if text[0] == '.' {
 			labels[text] = i
 		} else {
 			instructions = append(instructions, s.Text())
