@@ -39,7 +39,9 @@ The following instructions are supported:
 
 	call
 	leave
-	ret`
+	ret
+
+	p: prints processor state`
 
 // global vars
 var (
@@ -208,9 +210,12 @@ func Exec(s string) error {
 		Exec("inc %sp")
 		return nil
 	case "push":
+		val, err := getVal(operands[1])
+		if err != nil {
+			return err
+		}
 		Exec("dec %sp")
-		err := Exec(fmt.Sprintf("mov %s (%%sp)", operands[1]))
-		return err
+		return Exec(fmt.Sprintf("mov $%d (%%sp)", val))
 	case "call":
 		Exec("push %ip")
 		err := Exec(fmt.Sprintf("jmp %s", operands[1]))
