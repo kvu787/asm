@@ -78,9 +78,11 @@ func main() {
 	setVal("%fp", int64(len(mem)-1))
 
 	// load instructions from standard input
-	i := int64(0)
+	i := int64(0) // invariant: index of next instruction in slice
 	for s := bufio.NewScanner(os.Stdin); s.Scan(); {
 		text := s.Text()
+		text = strings.TrimSpace(text)
+		text = stripComment(text)
 		if len(text) == 0 {
 			continue
 		} else if text[0] == '.' {
@@ -321,5 +323,14 @@ func getPtr(operand string) (*int64, error) {
 		return &mem[*retPtr+intval], nil
 	default:
 		return nil, err
+	}
+}
+
+func stripComment(line string) string {
+	i := strings.Index(line, "#")
+	if i == -1 {
+		return line
+	} else {
+		return line[:i]
 	}
 }
