@@ -15,33 +15,61 @@ Asm implements a simple x86-like processor.
 
 Instructions are read from standard input.
 
-The instructions behave similarly to their x86 counterparts.
+INSTRUCTIONS
+
+The instructions are similar to their x86 counterparts.
 The following instructions are supported:
 
-	mov
-	push
-	pop
+  mov  src dst 
+  push src
+  pop  dst
 
-	inc
-	dec
-	add
-	sub
-	mul
+  inc dst
+  dec dst
+  add src dst
+  sub src dst
+  mul src dst
 
-	cmp
-	jmp
-	je, jz
-	jne, jnz
-	jg
-	jge
-	jl
-	jle
+  cmp src1 src2
+  jmp label
+  je, jz label
+  jne, jnz label
+  jg label
+  jge label
+  jl label
+  jle label
 
-	call
-	leave
-	ret
+  call label
+  leave
+  ret
 
-	p: prints processor state`
+  p: prints processor state
+
+REGISTERS
+
+6 general purpose registers are available:
+
+  %a, %b, %c, %d, %e, %f
+
+Special registers:
+
+  %ip: stores index of next instruction
+  %fp: frame pointer
+  %sp: stack pointer
+
+CALLING PROCEDURE
+
+Stack usage is identical to x86.
+
+Return register:        %a
+Caller-saved registers: %a, %b, %c
+Callee-saved registers: %d, %e, %f
+
+MEMORY ADDRESSING MODES
+
+imm      = mem[imm]
+(reg)    = mem[reg]
+num(reg) = mem[num + reg]`
 
 // global vars
 var (
@@ -79,8 +107,9 @@ func main() {
 
 	// load instructions from standard input
 	i := int64(0) // invariant: index of next instruction in slice
-	for s := bufio.NewScanner(os.Stdin); s.Scan(); {
-		text := s.Text()
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		text := scanner.Text()
 		text = strings.TrimSpace(text)
 		text = stripComment(text)
 		if len(text) == 0 {
@@ -88,9 +117,13 @@ func main() {
 		} else if text[0] == '.' {
 			labels[text] = i
 		} else {
-			instructions = append(instructions, s.Text())
+			instructions = append(instructions, text)
 			i++
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
 
 	// execute instructions
