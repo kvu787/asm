@@ -44,6 +44,7 @@ INSTRUCTIONS
     ret
 
     p (prints processor state)
+    exit (terminates this program)
 
 REGISTERS
 
@@ -266,6 +267,9 @@ func Exec(s string) error {
 		return nil
 	case "ret":
 		Exec("pop %ip")
+		return nil
+	case "exit":
+		os.Exit(0)
 		return nil
 	default:
 		return fmt.Errorf("invalid instruction: %s", operands[0])

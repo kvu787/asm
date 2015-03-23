@@ -33,6 +33,7 @@ INSTRUCTIONS
     ret
 
     p (prints processor state)
+    exit (terminates this program)
 
 REGISTERS
 
