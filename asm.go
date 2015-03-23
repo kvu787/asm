@@ -17,59 +17,59 @@ Instructions are read from standard input.
 
 INSTRUCTIONS
 
-The instructions are similar to their x86 counterparts.
-The following instructions are supported:
+  The instructions are similar to their x86 counterparts.
+  The following instructions are supported:
 
-  mov  src dst 
-  push src
-  pop  dst
+    mov
+    push
+    pop
 
-  inc dst
-  dec dst
-  add src dst
-  sub src dst
-  mul src dst
+    inc
+    dec
+    add
+    sub
+    mul
 
-  cmp src1 src2
-  jmp label
-  je, jz label
-  jne, jnz label
-  jg label
-  jge label
-  jl label
-  jle label
+    cmp
+    jmp
+    je, jz
+    jne, jnz
+    jg
+    jge
+    jl
+    jle
 
-  call label
-  leave
-  ret
+    call
+    leave
+    ret
 
-  p: prints processor state
+    p (prints processor state)
 
 REGISTERS
 
-6 general purpose registers are available:
+  6 general purpose registers are available:
 
-  %a, %b, %c, %d, %e, %f
+    %a, %b, %c, %d, %e, %f
 
-Special registers:
+  Special registers:
 
-  %ip: stores index of next instruction
-  %fp: frame pointer
-  %sp: stack pointer
+    %ip: stores index of next instruction
+    %fp: frame pointer
+    %sp: stack pointer
 
 CALLING PROCEDURE
 
-Stack usage is identical to x86.
+  Stack usage is identical to x86.
 
-Return register:        %a
-Caller-saved registers: %a, %b, %c
-Callee-saved registers: %d, %e, %f
+  Return register:        %a
+  Caller-saved registers: %a, %b, %c
+  Callee-saved registers: %d, %e, %f
 
 MEMORY ADDRESSING MODES
 
-imm      = mem[imm]
-(reg)    = mem[reg]
-num(reg) = mem[num + reg]`
+  imm      = mem[imm]
+  (reg)    = mem[reg]
+  num(reg) = mem[num + reg]`
 
 // global vars
 var (
