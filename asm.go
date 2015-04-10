@@ -13,7 +13,7 @@ var help string = `usage: asm [-h]
 
 Asm implements a simple x86-like processor.
 
-Instructions are read from standard input.
+Instructions are read from standard input and executed.
 
 INSTRUCTIONS
 
